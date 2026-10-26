@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inverse-and-Edit — Fast Image Editing</title>
+  <meta name="description" content="A simple framework for fast image editing: jointly train inversion and generation through a few-step cycle using two lightweight LoRA adapters.">
+  <meta property="og:title" content="Inverse-and-Edit"><meta property="og:description" content="Simple and Effective Framework for Fast Image Editing"><meta property="og:type" content="website">
+  <meta name="theme-color" content="#fafaf7"><link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="styles.css"><script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="nav-wrap"><nav class="nav shell" aria-label="Main navigation"><a class="wordmark" href="#">Inverse<span>↔</span>Edit</a><div class="nav-links"><a href="#method">Method</a><a href="#gallery">Examples</a><a href="#results">Results</a><a href="#citation">Cite</a></div><a class="nav-paper" href="assets/inverse-and-edit.pdf" target="_blank" rel="noopener">Paper <span aria-hidden="true">↗</span></a></nav></header>
+<main id="main">
+<section class="hero shell">
+  <h1>Inverse<span class="and">-and-</span><em>Edit</em></h1>
+  <p class="subtitle">Simple and Effective Framework<br class="desktop-break"> for Fast Image Editing</p>
+  <div class="authors"><a href="mailto:ibeletskiy@hse.ru">Ilia Beletskii<sup>1,2</sup></a><a href="mailto:kuznetsov@fusionbrainlab.com">Andrey Kuznetsov<sup>2,3</sup></a><a href="mailto:alanov.aibek@gmail.com">Aibek Alanov<sup>1,2,3</sup></a></div>
+  <p class="affiliations"><span><sup>1</sup> HSE University</span><span><sup>2</sup> FusionBrain Lab</span><span><sup>3</sup> Artificial Intelligence Institute, Innopolis University</span></p>
+  <div class="actions"><a class="button primary" href="assets/inverse-and-edit.pdf" target="_blank" rel="noopener">Read the paper</a><span class="code-status">Code coming soon</span><a class="text-link" href="#citation">BibTeX <span aria-hidden="true">↓</span></a></div>
+  <p class="hero-statement">Turn a few-step generator into an image editor.<br>Learn inversion and generation <strong>together.</strong></p>
+  <div class="gallery-intro"><span class="eyebrow">Z-IMAGE-TURBO · FLOW BACKBONE</span><span class="interaction-hint">Drag the divider to compare <span aria-hidden="true">↔</span></span></div>
+  <div class="compare-grid" id="hero-examples"></div>
+  <p class="figure-note">Results from the supplied flow-model comparison. Drag to compare the original image with our edited result.</p>
+  <details class="qual-figure"><summary>Compare with other flow editing methods <span aria-hidden="true">+</span></summary><figure><div class="qual-scroll" tabindex="0" role="region" aria-label="Full flow comparison; scroll horizontally on small screens"><img src="assets/qual-flow.png" width="1732" height="810" alt="Original, RF-Edit, FlowEdit, FireFlow, UniEdit, and Ours for white to golden, front to side, and rubber to plush edits." loading="lazy"></div><figcaption><span>All methods and timings from the supplied figure.</span><a href="assets/qual-flow.pdf" target="_blank" rel="noopener">Open full figure (PDF) ↗</a></figcaption></figure></details>
+</section>
+
+<section class="overview shell section" id="overview">
+  <div><p class="eyebrow">THE IDEA</p><h2>Train the whole<br><em>round trip.</em></h2></div>
+  <div class="overview-copy"><p class="lead">Few-step models make generation fast. Making them edit a specific image is harder: large sampling steps make standard inversion unreliable.</p><p>Inverse-and-Edit turns inversion and generation into a single differentiable cycle. Two LoRA adapters learn together on a frozen backbone, balancing faithful reconstruction, prompt-consistent changes, and a terminal latent that remains compatible with the model’s noise prior.</p><p>The same training recipe is evaluated on consistency-distilled, adversarial-distilled, and flow-based generators, across U-Net and DiT architectures.</p></div>
+  <div class="stat-strip"><div><strong>2</strong><span>LoRA adapters<br>on a frozen backbone</span></div><div><strong>1.5–7<span class="unit">%</span></strong><span>of base-model parameters<br>are fine-tuned</span></div><div><strong>&lt;10<span class="unit">K</span></strong><span>training triplets<br>from HQ-Edit</span></div><div><strong>3</strong><span>backbone families<br>evaluated on PIE-Bench</span></div></div>
+</section>
+
+<section class="method-section" id="method"><div class="shell section">
+  <div class="section-head"><div><p class="eyebrow">HOW IT WORKS</p><h2>One cycle.<br><em>Two learned adapters.</em></h2></div><p>Small numbers of steps make end-to-end optimization through inversion and generation practical.</p></div>
+  <div class="cycle" aria-label="Source image, learned inversion, terminal latent, learned generation, reconstruction or edit">
+    <div class="cycle-end"><span class="math">x<sub>0</sub></span><strong>Source image</strong><small>with source description</small></div><span class="cycle-arrow" aria-hidden="true">→</span>
+    <div class="cycle-adapter inverse"><span class="math">f<sub>φ</sub></span><strong>Inversion</strong><small>learned LoRA</small></div><span class="cycle-arrow" aria-hidden="true">→</span>
+    <div class="cycle-latent"><span class="math">z<sub>T</sub></span><strong>Terminal latent</strong><small>noise-prior compatible</small></div><span class="cycle-arrow" aria-hidden="true">→</span>
+    <div class="cycle-adapter generate"><span class="math">g<sub>θ</sub></span><strong>Generation</strong><small>learned LoRA</small></div><span class="cycle-arrow" aria-hidden="true">→</span>
+    <div class="cycle-end"><span class="math">x̂</span><strong>Reconstruct / edit</strong><small>source / target description</small></div>
+  </div>
+  <div class="cycle-under"><span class="training-label">JOINT END-TO-END TRAINING</span><p>At inference: one inversion pass, one editing pass. No per-image optimization or attention-control modules.</p></div>
+  <div class="loss-area"><div><p class="eyebrow">THE TRAINING OBJECTIVE</p><h3>Preserve content.<br>Enable meaningful change.</h3><p>Reconstruction alone admits a shortcut: a latent can keep too much of the image, so the model reconstructs well but barely edits. The complete objective balances three requirements.</p></div><div class="loss-explorer"><div class="loss-formula" aria-label="Total loss equals reconstruction plus directional CLIP plus weighted KL plus low-frequency loss"><span>ℒ =</span><button class="loss-term active" data-loss="rec" aria-pressed="true">ℒ<sub>rec</sub></button><span>+</span><button class="loss-term" data-loss="clip" aria-pressed="false">ℒ<sub>dCLIP</sub></button><span>+</span><button class="loss-term" data-loss="kl" aria-pressed="false">λ<sub>KL</sub>ℒ<sub>KL</sub></button><span>+</span><button class="loss-term" data-loss="lf" aria-pressed="false">ℒ<sub>LF</sub></button></div><p class="tiny">Select a term to see its role.</p><div class="loss-detail" aria-live="polite"><span class="detail-number" id="loss-num">01</span><div><h4 id="loss-title">Reconstruction</h4><p id="loss-copy">LPIPS compares the reconstructed image with the source. It teaches the two adapters to preserve source-specific content.</p></div></div></div></div>
+  <details class="method-figure"><summary>View the complete training and inference diagram <span aria-hidden="true">+</span></summary><figure><img src="assets/method-overview.png" alt="Figure 2 from the paper: fine-tuning and inference schemes" loading="lazy"><figcaption>Figure 2 from the paper. Both adapters are optimized jointly; inference uses the learned pair.</figcaption></figure></details>
+</div></section>
+
+<section class="shell section gallery-section" id="gallery">
+ <div class="section-head"><div><p class="eyebrow">QUALITATIVE RESULTS</p><h2>Different backbones.<br><em>The same recipe.</em></h2></div><p>Change an object, a material, or a detail while retaining the source scene. Explore results from the paper.</p></div>
+ <div class="tab-row" role="tablist" aria-label="Example backbone"><button class="tab active" id="gallery-tab-sdxl" role="tab" aria-selected="true" aria-controls="gallery-panel" data-gallery="sdxl">SDXL-Turbo <small>Adversarial</small></button><button class="tab" id="gallery-tab-sd" role="tab" aria-selected="false" aria-controls="gallery-panel" data-gallery="sd" tabindex="-1">LCM-DreamShaper <small>Consistency</small></button></div>
+ <div id="gallery-panel" role="tabpanel" aria-labelledby="gallery-tab-sdxl"><div class="compare-grid" id="gallery-examples"></div><p class="figure-note" id="gallery-source"></p><details class="qual-figure"><summary>Compare with other editing methods <span aria-hidden="true">+</span></summary><figure><div class="qual-scroll" tabindex="0" role="region" aria-label="Full qualitative comparison; scroll horizontally on small screens"><img id="gallery-full-figure" src="assets/qual-sdxl.png" width="1455" height="770" alt="SDXL comparison: original, ReNoise, GNRi, TurboEdit, and Ours for silver sculpture, sharks, and hat edits." loading="lazy"></div><figcaption><span>All methods from the supplied qualitative figure.</span><a id="gallery-figure-pdf" href="assets/qual-sdxl.pdf" target="_blank" rel="noopener">Open full figure (PDF) ↗</a></figcaption></figure></details></div>
+</section>
+
+<section class="results-section" id="results"><div class="shell section">
+  <div class="section-head"><div><p class="eyebrow">QUANTITATIVE RESULTS</p><h2>Evaluated on<br><em>PIE-Bench.</em></h2></div><p>The highest directional editing score in each evaluated backbone family, with a balance of editability, content preservation, and speed.</p></div>
+  <div class="tab-row" role="tablist" aria-label="Benchmark backbone"><button class="tab active" role="tab" id="result-tab-flow" aria-selected="true" aria-controls="results-panel" data-results="flow">Z-Image-Turbo</button><button class="tab" role="tab" id="result-tab-sdxl" aria-selected="false" aria-controls="results-panel" data-results="sdxl" tabindex="-1">SDXL-based</button><button class="tab" role="tab" id="result-tab-sd" aria-selected="false" aria-controls="results-panel" data-results="sd" tabindex="-1">SD-based</button></div>
+  <div id="results-panel" role="tabpanel" aria-labelledby="result-tab-flow"><div class="table-scroll"><table><caption class="sr-only">Selected metrics from Table 2 of the paper</caption><thead><tr><th scope="col">Method</th><th scope="col">dCLIP <span>↑</span></th><th scope="col">LPIPS <span>↓</span></th><th scope="col">ImageReward <span>↑</span></th><th scope="col">Time, s <span>↓</span></th></tr></thead><tbody id="result-rows"></tbody></table></div></div>
+  <div class="human-study"><div><p class="eyebrow">HUMAN PREFERENCE STUDY</p><h3>Edits people prefer.</h3><p>On Z-Image-Turbo, the method is preferred for overall quality and preservation against four flow editors. Prompt matching is closer to parity and dominated by ties.</p><p class="tiny">200 pairwise comparisons across 50 images. Two initial annotators; expert adjudication of disagreements. Score = wins + ½ ties; 50% is parity. Table 3 and Appendix B.</p></div><div class="preference-bars"><div class="preference"><div><span>Overall preference</span><strong>76.3%</strong></div><div class="track"><span style="width:76.3%"></span></div></div><div class="preference"><div><span>Source preservation</span><strong>78.8%</strong></div><div class="track"><span style="width:78.8%"></span></div></div><div class="preference"><div><span>Prompt match</span><strong>58.5%</strong></div><div class="track"><span style="width:58.5%"></span></div></div><div class="parity-label"><span>0%</span><span>50% · parity</span><span>100%</span></div></div></div>
+</div></section>
+
+<section class="shell section citation-section" id="citation"><div><p class="eyebrow">RESOURCES</p><h2>Build on<br><em>this work.</em></h2><div class="resource-links"><a href="assets/inverse-and-edit.pdf" target="_blank" rel="noopener">Current manuscript <span>PDF ↗</span></a></div><p class="tiny">Code will be available soon.</p></div><div class="citation-box citation-empty"><div class="citation-top"><span>BibTeX</span></div><pre id="bibtex"></pre></div></section>
+</main>
+<footer class="shell"><a class="wordmark" href="#">Inverse<span>↔</span>Edit</a><p>Ilia Beletskii · Andrey Kuznetsov · Aibek Alanov<br>Research images and results from the accompanying paper.</p><a class="text-link" href="#">Back to top ↑</a></footer>
+</body></html>
